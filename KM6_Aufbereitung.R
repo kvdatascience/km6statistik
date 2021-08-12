@@ -3,13 +3,12 @@
 
 # angepasst by Beate Zoch-Lesniak
 # Datum:02.12.2020
-# neuer Pfad, neue Spalte KV, Daten f?r 2019 und 2020 erg?nzt
+# neuer Pfad, neue Spalte KV, Daten für 2019 und 2020 erg?nzt
 
 library("readxl")
 library("tidyverse")
 
 regions_kv <- read_excel("KV_Regionen_Zuordnung.xlsx")
-
 
 km_6_files <- list.files(pattern="_20", full.names = T)
 
@@ -29,6 +28,11 @@ for (thefile in km_6_files ){
 }
 
 km_6.Daten <- alldata %>%
+  #Wert 0 in der Spalte Mitglieder.Insgesamt.Zusammen zu NA umkodieren,
+  #da in einigen Jahren in Excel unsichtbare 0 in eigentlich leeren Feldern enthalten ist
+  #da ansonsten bei den Mitgliedern insgesamt zusammen in keiner Altersgruppe 0 Personen
+  #sein sollten, erscheint mir das als der einfachste Weg der Korrektur
+  mutate(Mitglieder.Insgesamt.Zusammen = na_if(Mitglieder.Insgesamt.Zusammen, 0)) %>% 
   mutate(Region=ifelse(is.na(Mitglieder.Insgesamt.Zusammen),Region_und_Alter,NA),
          Alter=ifelse(!is.na(Mitglieder.Insgesamt.Zusammen),Region_und_Alter,NA)) %>% 
   fill(Region) %>%  filter(!is.na(Alter)) %>% 
@@ -42,11 +46,27 @@ km_6.Daten <- alldata %>%
                                 Region != "Bund" &
                                 Alter !="alle Altersgruppen" &
                                 Geschlecht !="Zusammen") %>%
-  mutate(Jahr=as.numeric(str_split_fixed(str_remove(id,"./KM6_"),"\\.",2)[,1])) %>% left_join(.,regions_kv,by="Region") 
-  
+  mutate(Jahr=as.numeric(str_split_fixed(str_remove(id,"./KM6_"),"\\.",2)[,1])) %>%
+  left_join(.,regions_kv,by="Region") 
+
 km_6.Daten.agg <-km_6.Daten %>% group_by(Jahr,KV_Name,KV,Versichertengruppe,Untergruppe,Geschlecht,Alter) %>%
-  summarise(Anzahl =sum(Anzahl,na.rm=FALSE))
+  summarise(Anzahl =sum(Anzahl,na.rm=FALSE)) %>% 
+  ungroup()
 
 
 write_excel_csv2(km_6.Daten,path ="KM6_aufbereitet.csv")
 saveRDS(km_6.Daten, file = "KM6_aufbereitet.Rds")
+
+#check
+km_6_agg_KV_Jahr <- km_6.Daten %>% 
+  group_by(KV, KV_Name, Jahr) %>% 
+  summarise(Anzahl = sum(Anzahl)) %>% 
+  arrange(KV_Name,Jahr)
+
+ggplot(km_6_agg_KV_Jahr, aes(x=Jahr, y=Anzahl/100000, color=as.factor(KV_Name), group=as.factor(KV_Name))) +
+  geom_line() +
+  scale_y_continuous(limits = c(0,150))
+
+km_6_agg_Jahr <- km_6.Daten %>% 
+  group_by(Jahr) %>% 
+  summarise(Anzahl = sum(Anzahl))
