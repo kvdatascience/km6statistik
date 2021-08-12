@@ -10,7 +10,6 @@ library("tidyverse")
 
 regions_kv <- read_excel("KV_Regionen_Zuordnung.xlsx")
 
-
 km_6_files <- list.files(pattern="_20", full.names = T)
 
 alldata <- tibble()
@@ -49,10 +48,25 @@ km_6.Daten <- alldata %>%
                                 Geschlecht !="Zusammen") %>%
   mutate(Jahr=as.numeric(str_split_fixed(str_remove(id,"./KM6_"),"\\.",2)[,1])) %>%
   left_join(.,regions_kv,by="Region") 
-  
+
 km_6.Daten.agg <-km_6.Daten %>% group_by(Jahr,KV_Name,KV,Versichertengruppe,Untergruppe,Geschlecht,Alter) %>%
-  summarise(Anzahl =sum(Anzahl,na.rm=FALSE))
+  summarise(Anzahl =sum(Anzahl,na.rm=FALSE)) %>% 
+  ungroup()
 
 
 write_excel_csv2(km_6.Daten,path ="KM6_aufbereitet.csv")
 saveRDS(km_6.Daten, file = "KM6_aufbereitet.Rds")
+
+#check
+km_6_agg_KV_Jahr <- km_6.Daten %>% 
+  group_by(KV, KV_Name, Jahr) %>% 
+  summarise(Anzahl = sum(Anzahl)) %>% 
+  arrange(KV_Name,Jahr)
+
+ggplot(km_6_agg_KV_Jahr, aes(x=Jahr, y=Anzahl/100000, color=as.factor(KV_Name), group=as.factor(KV_Name))) +
+  geom_line() +
+  scale_y_continuous(limits = c(0,150))
+
+km_6_agg_Jahr <- km_6.Daten %>% 
+  group_by(Jahr) %>% 
+  summarise(Anzahl = sum(Anzahl))
