@@ -10,7 +10,7 @@ library("tidyverse")
 
 regions_kv <- read_excel("KV_Regionen_Zuordnung.xlsx")
 
-km_6_files <- list.files(pattern="_20", full.names = T)
+km_6_files <- list.files(pattern="KM6_20", full.names = T)
 
 alldata <- tibble()
 
@@ -63,10 +63,17 @@ km_6_agg_KV_Jahr <- km_6.Daten %>%
   summarise(Anzahl = sum(Anzahl)) %>% 
   arrange(KV_Name,Jahr)
 
-ggplot(km_6_agg_KV_Jahr, aes(x=Jahr, y=Anzahl/100000, color=as.factor(KV_Name), group=as.factor(KV_Name))) +
-  geom_line() +
-  scale_y_continuous(limits = c(0,150))
-
+# KM-6 nach Jahr
 km_6_agg_Jahr <- km_6.Daten %>% 
   group_by(Jahr) %>% 
   summarise(Anzahl = sum(Anzahl))
+
+km_6_agg_Jahr
+
+# KM-6 nach KV und Jahr
+ggplot(km_6_agg_KV_Jahr, aes(x=Jahr, y=Anzahl/1e6, color=as.factor(KV_Name), group=as.factor(KV_Name))) +
+  geom_line() +
+  scale_y_continuous(limits = c(0,15)) +
+  labs(title="GKV-Mitglieder nach KV", subtitle="Anzahl in Mio.", 
+       x ="Jahr", y = "", color='') +
+  scale_color_viridis_d()
